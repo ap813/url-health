@@ -19,12 +19,12 @@ func DefineRoutes(router *gin.Engine) *gin.Engine {
 	})
 
 	router.POST("/add", handlers.AddHandler)
-	router.DELETE("/delete:url", handlers.RemoveHandler)
+	router.DELETE("/delete", handlers.RemoveHandler)
 	router.GET("/list", handlers.ListHandler)
 
+	// Splits into -> StatusAllHandler &
+	// StatusOneHandler based on query string
 	router.GET("/status", handlers.StatusSplit)
-	// router.GET("/status", handlers.StatusAllHandler)
-	// router.GET("/status/one?", handlers.StatusOneHandler)
 
 	return router
 }

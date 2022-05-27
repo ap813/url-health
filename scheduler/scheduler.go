@@ -1,88 +1,91 @@
 package scheduler
 
 import (
-	"errors"
+	"log"
 	"net/url"
 	"sync"
+	"time"
 )
 
-type Status string
-
-func (s Status) String() string {
-	return string(s)
+type schedule struct {
+	time  uint // A measure of time in seconds to wait
+	mutex sync.Mutex
 }
 
-type URLList struct {
-	list map[url.URL]Status
-	lock sync.RWMutex
+var s schedule
+
+type availability struct {
+	url    url.URL
+	status Status
 }
 
-var urls URLList
+// StartScheduler is called from configuration step
+// in main, it should be ran as a goroutine
+func MakeScheduler(t uint) {
 
-func MakeStatus(b bool) Status {
-	if b {
-		return Status("UP")
+	// Default wait is 15 minutes
+	if t != 0 {
+		s = schedule{time: t}
 	} else {
-		return Status("DOWN")
+		s = schedule{time: 900}
 	}
+
+	log.Println("Starting scheduler")
+
+	UpdateTime(t)
+	go func() {
+		for {
+			RunScheduler()
+		}
+	}()
 }
 
-// GetList: get map of urls and status
-func GetList() (result map[url.URL]Status) {
-	result = make(map[url.URL]Status)
-	urls.lock.RLock()
+func RunScheduler() {
+	// Sleep
+	time.Sleep(time.Second * time.Duration(GetTime()))
 
-	// Make a copy of the map to return
-	for key, val := range urls.list {
-		result[key] = val
+	log.Println("Running update")
+
+	// Get List of current URLs
+	// Setup channel and wait group
+	list := GetURLs()
+	replaceMap := make(map[url.URL]Status)
+	c := make(chan availability)
+	var wg sync.WaitGroup
+
+	// Spawn Go routine and pass object
+	// with URLs and their status
+	for _, site := range list {
+		wg.Add(1)
+		go func(u url.URL) {
+			defer wg.Done()
+			c <- availability{url: u, status: CheckURL(u)}
+		}(site)
 	}
 
-	urls.lock.RUnlock()
+	// Aggregate urls and status
+	go func() {
+		for a := range c {
+			replaceMap[a.url] = a.status
+		}
+	}()
+
+	// Wait for map to be made
+	wg.Wait()
+	close(c)
+
+	UpdateStatus(replaceMap)
+}
+
+func UpdateTime(t uint) {
+	s.mutex.Lock()
+	s.time = t
+	s.mutex.Unlock()
+}
+
+func GetTime() (t uint) {
+	s.mutex.Lock()
+	t = s.time
+	s.mutex.Unlock()
 	return
-}
-
-// GetURLs produces a copy of the urls being tracked
-func GetURLs() (result []url.URL) {
-	result = []url.URL{}
-	urls.lock.RLock()
-
-	// Make a copy of the map to return
-	for key := range urls.list {
-		result = append(result, key)
-	}
-
-	urls.lock.RUnlock()
-	return
-}
-
-// SetList will replace the entire map of urls and their status
-func SetList(newList map[url.URL]Status) {
-	urls.lock.Lock()
-	urls.list = newList
-	urls.lock.Unlock()
-}
-
-// AddList inserts a new url and status to the map
-func AddList(url url.URL, status Status) {
-	urls.lock.Lock()
-	urls.list[url] = status
-	urls.lock.Unlock()
-}
-
-// DeleteURL removes a URL from the map if it exists
-func DeleteURL(url url.URL) {
-	urls.lock.Lock()
-	delete(urls.list, url)
-	urls.lock.Unlock()
-}
-
-// OneStatus will get the status of a valid url or send an error
-func OneStatus(url url.URL) (Status, error) {
-	urls.lock.RLock()
-	status, ok := urls.list[url]
-	urls.lock.RUnlock()
-	if !ok {
-		return "", errors.New("URL not present in list")
-	}
-	return status, nil
 }

@@ -76,7 +76,7 @@ func main() {
 		scheduler.SetList(emptyMap)
 	}
 
-	fmt.Printf("List available %v\n", scheduler.GetList())
+	scheduler.MakeScheduler(900)
 
 	r := gin.Default()
 	r = router.DefineRoutes(r)
