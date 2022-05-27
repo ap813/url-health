@@ -31,19 +31,20 @@ func readYaml(filepath string) (map[interface{}]interface{}, error) {
 // Return a slice of url structs from the parsed yaml config
 func parseConfig(data map[interface{}]interface{}) (map[urlutil.URL]scheduler.Status, error) {
 	if val, ok := data["urls"]; ok {
-		fmt.Printf("%T %v\n", val, val)
 		if urls, ok := val.([]interface{}); ok {
 			results := make(map[urlutil.URL]scheduler.Status)
 			for _, url := range urls {
 				// Use URL list and prepend https://
 				strURL := fmt.Sprint(url)
-				parsedURL, err := urlutil.ParseRequestURI(fmt.Sprintf("https://%s", strURL))
+				parsedURL, err := urlutil.ParseRequestURI(fmt.Sprintf("https://www.%s", strURL))
 				if err != nil {
 					return nil, errors.New(fmt.Sprintf("URL (%s) is not a valid format.", strURL))
 				}
 				// Set all status values as DOWN until first call
-				results[*parsedURL] = scheduler.MakeStatus(false)
+				status := scheduler.CheckURL(*parsedURL)
+				results[*parsedURL] = status
 			}
+			log.Printf("%v\n", results)
 			return results, nil
 		} else {
 			return nil, errors.New("Error assigning YAML 'urls' to correct type. List should only include strings.")

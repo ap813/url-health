@@ -1,29 +1,38 @@
 package handlers
 
 import (
-	"fmt"
-	"strings"
+	"url-health/scheduler"
+	"url-health/utils"
 
 	"net/http"
-	urlutil "net/url"
 
 	"github.com/gin-gonic/gin"
 )
 
+// Binding from JSON
+type AddHandlerRequest struct {
+	URL string `json:"url" binding:"required"`
+}
+
 func AddHandler(c *gin.Context) {
-
-	// Clean the url and make sure it has https://
-	url := c.Param("url")
-	url = strings.TrimLeft(url, "http://")
-	url = strings.TrimLeft(url, "https://")
-	url = fmt.Sprintf("https://%s", url)
-
-	parsedURL, err := urlutil.ParseRequestURI(url)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("URL is in incorrect form: %s", url),
-		})
+	// Read JSON body
+	var json AddHandlerRequest
+	if err := c.ShouldBindJSON(&json); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorMessage{Err: err.Error()})
+		return
 	}
 
-	_ = parsedURL
+	// Clean the url and make sure it has https://
+	parsedURL, err := utils.CheckURL(json.URL)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorMessage{Err: err.Error()})
+		return
+	}
+
+	// Check status then write status to list
+	status := scheduler.CheckURL(parsedURL)
+	scheduler.AddList(parsedURL, status)
+
+	// Add to response body and return 201
+	c.Writer.WriteHeader(http.StatusCreated)
 }
