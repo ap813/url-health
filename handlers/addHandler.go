@@ -33,6 +33,6 @@ func AddHandler(c *gin.Context) {
 	status := scheduler.CheckURL(parsedURL)
 	scheduler.AddList(parsedURL, status)
 
-	// Add to response body and return 201
+	// Return 201 created successfully
 	c.Writer.WriteHeader(http.StatusCreated)
 }
