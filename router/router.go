@@ -26,5 +26,7 @@ func DefineRoutes(router *gin.Engine) *gin.Engine {
 	// StatusOneHandler based on query string
 	router.GET("/status", handlers.StatusSplit)
 
+	router.POST("/sleep", handlers.SetSleepHandler)
+
 	return router
 }

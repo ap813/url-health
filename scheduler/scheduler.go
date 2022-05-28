@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"errors"
 	"log"
 	"net/url"
 	"sync"
@@ -8,7 +9,7 @@ import (
 )
 
 type schedule struct {
-	time  uint // A measure of time in seconds to wait
+	time  int // A measure of time in seconds to wait
 	mutex sync.Mutex
 }
 
@@ -21,10 +22,10 @@ type availability struct {
 
 // StartScheduler is called from configuration step
 // in main, it should be ran as a goroutine
-func MakeScheduler(t uint) {
+func MakeScheduler(t int) {
 
 	// Default wait is 15 minutes
-	if t != 0 {
+	if t > 0 {
 		s = schedule{time: t}
 	} else {
 		s = schedule{time: 900}
@@ -77,13 +78,19 @@ func RunScheduler() {
 	UpdateStatus(replaceMap)
 }
 
-func UpdateTime(t uint) {
+func UpdateTime(t int) error {
+	if t <= 0 {
+		return errors.New("Sleep must greater than 0.")
+	}
+
 	s.mutex.Lock()
 	s.time = t
 	s.mutex.Unlock()
+
+	return nil
 }
 
-func GetTime() (t uint) {
+func GetTime() (t int) {
 	s.mutex.Lock()
 	t = s.time
 	s.mutex.Unlock()

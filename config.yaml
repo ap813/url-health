@@ -1,4 +1,5 @@
 ---
+sleep: 600 # 10m
 urls:
   - google.com
   - github.com
