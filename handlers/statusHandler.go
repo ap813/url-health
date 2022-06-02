@@ -42,11 +42,6 @@ func StatusAllHandler(c *gin.Context) {
 	c.JSON(200, resp)
 }
 
-// Binding from JSON
-type StatusOneRequest struct {
-	URL string `json:"url" binding:"required"`
-}
-
 type StatusOneResponse struct {
 	URL    string `json:"url"`
 	Status string `json:"status"`
